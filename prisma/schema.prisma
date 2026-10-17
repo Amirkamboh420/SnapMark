@@ -1,0 +1,119 @@
+// SnapMark — Screenshot + Annotation Tool
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String?
+  role         String         @default("FREE") // FREE | PRO | TEAM_OWNER | TEAM_MEMBER | ADMIN
+  planType     String         @default("FREE")
+  storageUsed  Int            @default(0)
+  avatarColor  String         @default("emerald")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  screenshots  Screenshot[]
+  folders      Folder[]
+  sharedLinks  SharedLink[]
+  teamMembers  TeamMember[]
+  tickets      SupportTicket[]
+}
+
+model Folder {
+  id           String        @id @default(cuid())
+  name         String
+  color        String        @default("emerald")
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  screenshots  Screenshot[]
+  createdAt    DateTime      @default(now())
+}
+
+model Screenshot {
+  id            String        @id @default(cuid())
+  title         String
+  dataUrl       String       @default("")
+  captureType   String        @default("visible") // full-page | visible | selected
+  width         Int           @default(1280)
+  height        Int           @default(720)
+  sizeBytes     Int           @default(0)
+  aiBlurApplied Boolean       @default(false)
+  starred       Boolean       @default(false)
+  tags          String        @default("")
+  userId        String
+  folderId      String?
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  sharedLinks   SharedLink[]
+  createdAt     DateTime      @default(now())
+}
+
+model SharedLink {
+  id              String      @id @default(cuid())
+  url             String      @unique
+  screenshotId    String
+  screenshot      Screenshot  @relation(fields: [screenshotId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiryDays      Int         @default(7)
+  passwordProtect Boolean     @default(false)
+  password        String?
+  viewCount       Int         @default(0)
+  watermark       Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+}
+
+model Team {
+  id        String       @id @default(cuid())
+  name      String
+  ownerId   String
+  seats     Int          @default(5)
+  createdAt DateTime     @default(now())
+  members   TeamMember[]
+}
+
+model TeamMember {
+  id      String   @id @default(cuid())
+  teamId  String
+  userId  String
+  role    String   @default("EDITOR") // EDITOR | VIEWER
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+}
+
+model Subscription {
+  id           String   @id @default(cuid())
+  userId       String
+  plan         String   @default("FREE")
+  status       String   @default("active")
+  amount       Float    @default(0)
+  currency     String   @default("USD")
+  renewalDate  DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  message     String
+  status      String   @default("open") // open | in-progress | resolved
+  priority     String   @default("medium")
+  createdAt   DateTime @default(now())
+}
+
+model AIBlurLog {
+  id            String   @id @default(cuid())
+  pattern       String   // email | phone | card | cnic
+  detected      Int      @default(0)
+  falsePositive Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
